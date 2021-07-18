@@ -91,13 +91,17 @@ router.post("/", (req, res) => {
 
 // Route for upvote
 router.put("/upvote", (req, res) => {
-  // create the vote ststic method from Post.js
-  Post.upvote(req.body, { Vote })
+  // Make sure the session exists first
+  if(req.session) {
+    // create the vote ststic method from Post.js
+    Post.upvote({...req.body, user_id: req.session.user_id}, { Vote, Comment, User })
     .then(dbPostData => res.json(dbPostData))
     .catch(err => {
       console.log(err);
-      res.status(400).json(err);
+      res.status(500).json(err);
     });
+  }
+  
 });
 
 // Update a post
