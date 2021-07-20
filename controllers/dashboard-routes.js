@@ -1,16 +1,20 @@
 const router = require('express').Router();
 const sequelize = require('../config/connection');
 const { Post, User, Comment } = require('../models');
+const withAuth = require('../utils/auth');
 
-router.get('/', (req, res) => {
-  console.log(req.session);
+router.get('/', withAuth, (req, res) => {
   Post.findAll({
+    where: {
+      // use the id from the session
+      user_id: req.session.user_id
+    },
     attributes: [
       'id',
       'post_url',
       'title',
       'created_at',
-      [sequelize.literal('(SELECT COUNT(*) FROM vote WHERE post.id = vote.post_id)'), 'vote_count']
+      [sequelize.literal('(SELECT COUNT (*) FROM vote WHERE post.id = vote.post_id)'), 'vote_count']
     ],
     include: [
       {
@@ -27,41 +31,28 @@ router.get('/', (req, res) => {
       }
     ]
   })
-    .then(dbPostData => {
-      const posts = dbPostData.map(post => post.get({plain: true}));
-      // pass a single post object into the homepage template
-      res.render('homepage', {
-        posts,
-        loggedIn: req.session.loggedIn
-      });
-    })
-    .catch(err => {
-      console.log(err);
-      res.status(500).json(err);
-    });
+  .then(dbPostData => {
+    // searialize date before passing to template
+    const posts = dbPostData.map(post => post.get({plain: true}));
+    res.render('dashboard', { posts, loggedIn: true});
+  })
+  .catch(err => {
+    console.log(err);
+    res.status(500).json(err);
+  })
 });
 
-router.get('/login', (req, res) => {
-  if(req.session.loggedIn) {
-    res.redirect('/dashboard');
-    return;
-  }
-
-  res.render('login');
-});
-
-// single post route
-router.get('/post/:id', (req, res) => {
-  Post.findOne({
-    where: {
-      id: req.params.id
+router.get('/edit/:id', withAuth, (req, res) => {
+    Post.findOne({
+      where:  {
+        id: req.params.id
     },
     attributes: [
       'id',
       'post_url',
       'title',
       'created_at',
-      [sequelize.literal('(SELECT COUNT(*) FROM vote WHERE post.id = vote.post_id)'), 'vote_count']
+      [sequelize.literal('(SELECT COUNT (*) FROM vote WHERE post.id = vote.post_id)'), 'vote_count']
     ],
     include: [
       {
@@ -75,25 +66,20 @@ router.get('/post/:id', (req, res) => {
       {
         model: User,
         attributes: ['username']
-      } 
+      }
     ]
   })
   .then(dbPostData => {
-    if(!dbPostData) {
-      return res.status(404).json({ message: 'No post found with this id'});
-    }
-    // serialize the data
+    // searialize date before passing to template
     const post = dbPostData.get({plain: true});
-    // pass data to template
-    res.render('single-post', {
-      post,
-      loggedIn: req.session.loggedIn
-      });
+    console.log(post);
+    res.render('edit-post', { post });
   })
   .catch(err => {
     console.log(err);
     res.status(500).json(err);
   })
 });
+
 
 module.exports = router;
