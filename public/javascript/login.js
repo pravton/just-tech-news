@@ -19,7 +19,8 @@ async function signupFormHandler(event) {
 
     // Check the response status
     if(response.ok) {
-      console.log('success');
+      alert('Registration successful! Please login to see the dashboard!')
+      res.location.reload('/');
     } else {
       alert(response.statusText);
     }
